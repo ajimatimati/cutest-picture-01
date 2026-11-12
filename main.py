@@ -4,6 +4,8 @@ import shutil
 import sys
 from pathlib import Path
 
+__version__ = "1.0.1"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -52,4 +54,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# make.fun entrypoint revision 2
 
