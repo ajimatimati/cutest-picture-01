@@ -1,10 +1,13 @@
+"""Sapphire-Eyed Cream Kitten Hugging Daisy Chick"""
+
+__version__ = "2.0.0"
+
+import hashlib
 import logging
 import os
 import shutil
 import sys
 from pathlib import Path
-
-__version__ = "1.0.1"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,28 +15,46 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-def main():
+def compute_sha256(file_path: Path) -> str:
+    """Compute the SHA-256 checksum of a file."""
+    hasher = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(65536):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+def main() -> None:
     logging.info("Starting cutest-picture-01 entrypoint execution")
-    src = Path(__file__).parent / "entry.png"
+
+    src = Path(__file__).resolve().parent / "entry.png"
     if not src.exists() or not src.is_file():
         logging.error(f"Source file not found: {src}")
         sys.exit(1)
 
     src_size = src.stat().st_size
-    logging.info(f"Source image validated: {src} ({src_size} bytes)")
     if src_size == 0:
         logging.error(f"Source file is empty: {src}")
         sys.exit(1)
 
-    out_dir_env = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    out_dir = Path(out_dir_env)
+    src_sha256 = compute_sha256(src)
+    logging.info(f"Source image validated: {src} ({src_size} bytes, sha256={src_sha256})")
+
+    out_raw = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output/entry.png")
+    out_path = Path(out_raw)
+
+    if out_path.suffix or out_path.name.lower().endswith(".png"):
+        dst = out_path
+        out_dir = dst.parent
+    else:
+        out_dir = out_path
+        dst = out_dir / "entry.png"
+
     try:
         out_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         logging.error(f"Failed to create output directory {out_dir}: {e}")
         sys.exit(1)
 
-    dst = out_dir / "entry.png"
     try:
         shutil.copyfile(src, dst)
         logging.info(f"Copied {src} to {dst}")
@@ -50,10 +71,14 @@ def main():
         logging.error(f"File size mismatch: src={src_size} bytes, dst={dst_size} bytes")
         sys.exit(1)
 
-    logging.info(f"Verification successful: copied {dst_size} bytes to {dst}")
+    dst_sha256 = compute_sha256(dst)
+    if dst_sha256 != src_sha256:
+        logging.error(f"Checksum mismatch: src={src_sha256}, dst={dst_sha256}")
+        sys.exit(1)
+
+    logging.info(
+        f"Verification successful: copied {dst_size} bytes to {dst} (sha256={dst_sha256})"
+    )
 
 if __name__ == "__main__":
     main()
-
-# make.fun entrypoint revision 2
-
